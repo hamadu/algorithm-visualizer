@@ -55,6 +55,10 @@
           while (j != -1) {
             backArray.setStyles(white)
 
+            if (i + nl > hl) {
+              break
+            }
+
             if (j < nl && haystack.charAt(i+j) == needle.charAt(j)) {
               haystackArray.setStyle(i+j, 'fill', '#ccf')
               needleArray.setStyle(j, 'fill', '#ccf')
@@ -94,12 +98,6 @@
           if (j == -1) {
             i += 1
             j = 0
-            yield(["step finished", i])
-          } else if (j == nl) {
-            world.rect(32 + i * 48, 32, 48, 32, { text: '☆', shapeStyle: noedge })
-            i += 1
-            j = 0
-            yield(["step finished", i])
           }
           needleArray.x += 48
           backArray.setStyles(white)
@@ -107,6 +105,8 @@
           needleArray.setStyles(white)
           yield(["step finished", i])
         }
+
+        world.rect(32, 96 * 2, 48, 48, { text: 'おわり', shapeStyle: noedge })
         yield(["finished"])
       }
 
