@@ -27,7 +27,7 @@
         const nl = needle.length
 
         const backData = [-1]
-        for (let i = 1 ; i < nl ; i++) {
+        for (let i = 1 ; i <= nl ; i++) {
           let maxMatchLen = 0
           for (let len = 1 ; len < i ; len++) {
             const prefix = needle.substr(0, len)
@@ -52,17 +52,28 @@
         let i = 0
         let j = 0
         for ( ; i + nl <= hl ; ) {
-          while (j < nl && j != -1) {
+          while (j != -1) {
             backArray.setStyles(white)
 
-            if (haystack.charAt(i+j) != needle.charAt(j)) {
+            if (j < nl && haystack.charAt(i+j) == needle.charAt(j)) {
               haystackArray.setStyle(i+j, 'fill', '#ccf')
-              needleArray.setStyle(j, 'fill', '#fcc')
+              needleArray.setStyle(j, 'fill', '#ccf')
+              j += 1
+              yield("match")
+            } else {
+              if (j == nl) {
+                world.rect(32 + i * 48, 32, 48, 32, { text: '☆', shapeStyle: noedge })
+                yield(["step finished", i])
+              } else if (haystack.charAt(i+j) != needle.charAt(j)) {
+                haystackArray.setStyle(i+j, 'fill', '#ccf')
+                needleArray.setStyle(j, 'fill', '#fcc')
 
-              yield("unmatch-0")
+                yield("unmatch-0")
+              }
 
-              haystackArray.setStyle(i+j, 'fill', '#fff')
               backArray.setStyle(j, 'fill', '#fcc')
+
+              yield("unmatch-1")
 
               if (backData[j] != -1) {
                 i = i + j - backData[j]
@@ -78,12 +89,6 @@
                 needleArray.setStyle(c, 'fill', '#ccf')
               }
               yield("unmatch-1")
-            } else {
-              haystackArray.setStyle(i+j, 'fill', '#ccf')
-              needleArray.setStyle(j, 'fill', '#ccf')
-              j += 1
-
-              yield("match")
             }
           }
           if (j == -1) {
