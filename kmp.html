@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>aldrawer demo</title>
+  </head>
+  <body>
+    <div>
+      KMP法: O(N+M)<br/>
+      <input type="text" id="haystack" placeholder="haystack" value="abababadbabadababad" /><br/>
+      <input type="text" id="needle" placeholder="needle" value="ababad" /><br/>
+      <button type="button" onClick="prepare()" />init</button>
+      <button type="button" onClick="step()" />step</button>
+      <button type="button" onClick="clean()" />clear</button>
+    </div>
+
+    <div id="app"></div>
+
+    <script src="./node_modules/aldrawer/dist/build.js"></script>
+
+    <script>
+      function* doit(world, haystack, needle) {
+        const haystackArray = world.array(32, 96,          48, 48, Array.from(haystack), { index: true })
+        const needleArray =   world.array(32, 96 + 96,     48, 48, Array.from(needle))
+
+        const hl = haystack.length
+        const nl = needle.length
+
+        const backData = [-1]
+        for (let i = 1 ; i < nl ; i++) {
+          let maxMatchLen = 0
+          for (let len = 1 ; len < i ; len++) {
+            const prefix = needle.substr(0, len)
+            const suffix = needle.substr(i-len, len)
+            if (prefix == suffix) {
+              maxMatchLen = Math.max(maxMatchLen, len)
+            }
+          }
+          backData.push(maxMatchLen)
+        }
+
+        const backArrayIdx =   world.array(32, 96 + 96 * 2,      32, 32, Array.from(needle))
+        const backArray    =   world.array(32, 96 + 96 * 2 + 32, 32, 32, backData)
+
+        yield("prepared")
+
+        const noedge = { fill: '#fff', stroke: '#fff', 'stroke-width': 0 }
+        const white =  { fill: '#fff', stroke: '#000', 'stroke-width': 2 }
+        const red =    { fill: '#fcc', stroke: '#000', 'stroke-width': 2 }
+        const blue =   { fill: '#ccf', stroke: '#000', 'stroke-width': 2 }
+
+        let i = 0
+        let j = 0
+        for ( ; i + nl <= hl ; ) {
+          while (j < nl && j != -1) {
+            backArray.setStyles(white)
+
+            if (haystack.charAt(i+j) != needle.charAt(j)) {
+              haystackArray.setStyle(i+j, 'fill', '#ccf')
+              needleArray.setStyle(j, 'fill', '#fcc')
+
+              yield("unmatch-0")
+
+              haystackArray.setStyle(i+j, 'fill', '#fff')
+              backArray.setStyle(j, 'fill', '#fcc')
+
+              if (backData[j] != -1) {
+                i = i + j - backData[j]
+                needleArray.x = 32 + i * 48
+              }
+
+              j = backData[j]
+
+              haystackArray.setStyles(white)
+              needleArray.setStyles(white)
+              for (let c = 0 ; c < j ; c++) {
+                haystackArray.setStyle(i+c, 'fill', '#ccf')
+                needleArray.setStyle(c, 'fill', '#ccf')
+              }
+              yield("unmatch-1")
+            } else {
+              haystackArray.setStyle(i+j, 'fill', '#ccf')
+              needleArray.setStyle(j, 'fill', '#ccf')
+              j += 1
+
+              yield("match")
+            }
+          }
+          if (j == -1) {
+            i += 1
+            j = 0
+            yield(["step finished", i])
+          } else if (j == nl) {
+            world.rect(32 + i * 48, 32, 48, 32, { text: '☆', shapeStyle: noedge })
+            i += 1
+            j = 0
+            yield(["step finished", i])
+          }
+          needleArray.x += 48
+          backArray.setStyles(white)
+          haystackArray.setStyles(white)
+          needleArray.setStyles(white)
+          yield(["step finished", i])
+        }
+        yield(["finished"])
+      }
+
+      function prepare() {
+        window.current = doit(
+          world,
+          document.getElementById('haystack').value,
+          document.getElementById('needle').value
+        )
+      }
+
+      function step() {
+        window.current.next()
+      }
+
+      function clean() {
+        window.world.clear()
+      }
+
+      window.world = Aldrawer.make('#app', { width: 1280, height: 960 })
+    </script>
+
+
+  </body>
+</html>
