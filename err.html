@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>aldrawer demo</title>
+  </head>
+  <body>
+    <div>
+      Computes Error Array: O(N)<br/>
+      <input type="text" id="query" placeholder="query" value="ababdababad" /><br/>
+      <button type="button" onClick="prepare()" />init</button>
+      <button type="button" onClick="step()" />step</button>
+      <button type="button" onClick="clean()" />clear</button>
+    </div>
+
+    <div>
+      <pre>
+        public static int[] errorFunction(char[] a) {
+            int len = a.length;
+            int[] err = new int[len+1];
+            err[0] = -1;
+            for (int i = 2 ; i <= len ; i++) {
+                int now = err[i-1];
+                while (now > 0 && a[i-1] != a[now]) {
+                    now = err[now];
+                }
+                if (a[i-1] == a[now]) {
+                    now++;
+                } else {
+                    now = 0;
+                }
+                err[i] = now;
+            }
+            return err;
+        }
+      </pre>
+    </div>
+
+    <div id="app"></div>
+
+    <script src="./node_modules/aldrawer/dist/build.js"></script>
+
+    <script>
+      function* doit(world, query) {
+        const noedge = { fill: '#fff', stroke: '#fff', 'stroke-width': 0 }
+        const white =  { fill: '#fff', stroke: '#000', 'stroke-width': 2 }
+        const red =    { fill: '#fcc', stroke: '#000', 'stroke-width': 2 }
+        const blue =   { fill: '#ccf', stroke: '#000', 'stroke-width': 2 }
+
+        const queryArray = world.array(32, 96, 48, 48, Array.from(query), { index: true })
+        const nl = query.length
+        const backData = [-1, 0]
+        for (let i = 2 ; i <= nl ; i++) {
+          backData.push('?')
+        }
+        const backArray    =   world.array(32, 96 + 96, 48, 48, backData)
+
+        yield("prepared")
+
+        for (let i = 2 ; i <= nl ; i++) {
+          let now = backData[i-1]
+
+          queryArray.setStyles(white)
+          backArray.setStyles(white)
+          backArray.setStyle(i-1, 'fill', '#aaf')
+          backArray.setStyle(i, 'fill', '#ffa')
+
+          while (now > 0) {
+            queryArray.setStyles(white)
+
+            // show same range
+            const w1 = world.rect(32, 48, 48 * now, 16, { shapeStyle: red })
+            const w2 = world.rect(32 + (i - 2 - now + 1) * 48, 16, 48 * now, 16, { shapeStyle: red })
+            yield("w12")
+
+            if (query[i-1] == query[now]) {
+              queryArray.setStyle(i-1, 'fill', '#faa')
+              queryArray.setStyle(now, 'fill', '#faa')
+              yield("ok")
+              world.remove(w1)
+              world.remove(w2)
+              break;
+            }
+
+
+            queryArray.setStyle(i-1, 'fill', '#aaf')
+            queryArray.setStyle(now, 'fill', '#faa')
+            yield("ng")
+
+            const nnow = now
+            now = backData[now]
+
+            backArray.setStyles(white)
+            backArray.setStyle(nnow, 'fill', '#aaf')
+            backArray.setStyle(i, 'fill', '#ffa')
+
+
+            world.remove(w1)
+            world.remove(w2)
+            yield("ng2")
+          }
+
+          yield("i = " + i)
+
+          if (query[i-1] == query[now]) {
+            for (let c = 0 ; c < nl ; c++) {
+              queryArray.setStyle(c, 'fill', '#fff')
+            }
+            queryArray.setStyle(i-1, 'fill', '#faa')
+            queryArray.setStyle(now, 'fill', '#faa')
+            now++
+          } else {
+            for (let c = 0 ; c < nl ; c++) {
+              queryArray.setStyle(c, 'fill', '#fff')
+            }
+            queryArray.setStyle(i-1, 'fill', '#aaf')
+            queryArray.setStyle(now, 'fill', '#faa')
+            now = 0
+          }
+
+          backData[i] = now
+          backArray.setValue(i, now)
+          backArray.setStyle(i, 'fill', '#fcc')
+
+          yield("i = " + i)
+        }
+
+        world.rect(32, 96 * 3, 48, 48, { text: 'おわり', shapeStyle: noedge })
+
+        yield(["finished"])
+      }
+
+      function prepare() {
+        window.world.clear()
+        window.current = doit(world, document.getElementById('query').value)
+      }
+
+      function step() {
+        window.current.next()
+      }
+
+      function clean() {
+        window.world.clear()
+      }
+
+      window.world = Aldrawer.make('#app', { width: 1280, height: 960 })
+    </script>
+
+
+  </body>
+</html>

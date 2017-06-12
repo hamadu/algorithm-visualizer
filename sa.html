@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>aldrawer demo</title>
+  </head>
+  <body>
+    <div>
+      Builds Suffix Array: O(NlogN)<br/>
+      <input type="text" id="query" placeholder="query" value="ababdababad" /><br/>
+      <button type="button" onClick="prepare()" />init</button>
+      <button type="button" onClick="step()" />step</button>
+      <button type="button" onClick="clean()" />clear</button>
+    </div>
+
+    <div id="app"></div>
+
+    <div>
+      <pre>
+        int compareNode(int i, int j, int k) {
+            if (rank[i] != rank[j]) {
+                return rank[i] - rank[j];
+            } else {
+                int ri = i + k <= n ? rank[i+k] : -1;
+                int rj = j + k <= n ? rank[j+k] : -1;
+                return ri - rj;
+            }
+        }
+
+        public SuffixArray(char[] x) {
+            base = x;
+            n = base.length;
+        }
+
+        void buildSA() {
+            sa = new Integer[n+1];
+            rank = new int[n+1];
+            tmp = new int[n+1];
+            for (int i = 0 ; i <= n ; i++) {
+                sa[i] = i;
+                rank[i] = (i < n) ? base[i] : -1;
+            }
+            for (int _k = 1 ; _k <= n ; _k *= 2) {
+                final int k = _k;
+                Arrays.sort(sa, new Comparator<Integer>() {
+                    @Override
+                    public int compare(Integer i, Integer j) {
+                        return compareNode(i, j, k);
+                    }
+                });
+                tmp[sa[0]] = 0;
+                for (int i = 1 ; i <= n ; i++) {
+                    tmp[sa[i]] = tmp[sa[i-1]] + ((compareNode(sa[i-1], sa[i], k) < 0) ? 1 : 0);
+                }
+                for (int i = 0 ; i <= n ; i++) {
+                    rank[i] = tmp[i];
+                }
+            }
+        }
+      </pre>
+    </div>
+
+    <script src="./node_modules/aldrawer/dist/build.js"></script>
+
+    <script>
+      const size = 48
+
+      function* doit(world, query) {
+        const noedge = { fill: '#fff', stroke: '#fff', 'stroke-width': 0 }
+        const white =  { fill: '#fff', stroke: '#000', 'stroke-width': 2 }
+        const red =    { fill: '#fcc', stroke: '#000', 'stroke-width': 2 }
+        const blue =   { fill: '#ccf', stroke: '#000', 'stroke-width': 2 }
+
+        const string = world.array(32, 32, 48, 48, Array.from(query))
+
+        const queryArray = world.array(32, 128, size, size, Array.from(query), { orientation: 'row' })
+        const nl = query.length
+
+        const suffixOrder = []
+        for (let i = 0 ; i < nl ; i++) {
+          suffixOrder.push(i)
+        }
+        const suffixArray = world.array(96, 128, size, size, suffixOrder, { orientation: 'row' })
+
+
+        yield("prepared")
+
+        for (let k = 1 ;  ; k *= 2) {
+            // re-order suffix
+
+            for (var i = 0 ; i < nl ; i++) {
+              suffixArray.setValue(i, suffixOrder[i])
+            }
+
+            const suffixStrings = []
+            for (var i = 0 ; i < nl ; i++) {
+              const suffix = query.substr(suffixOrder[i])
+              suffixStrings.push(Array.from(suffix))
+            }
+            const suffixStringTable = world.table(160, 128, size, size, suffixStrings)
+
+            if (k > nl) {
+              break;
+            }
+
+            const subStringWithIndex = []
+            for (var i = 0 ; i < nl ; i++) {
+              const suffix = query.substr(i)
+              subStringWithIndex.push([i, suffix.substr(0, k)])
+            }
+            subStringWithIndex.sort((a, b) => {
+              const c = a[1].localeCompare(b[1])
+              if (c === 0) {
+                return a[0] - b[0]
+              }
+              return c
+            })
+
+            for (var i = 0 ; i < nl ; i++) {
+              suffixOrder[i] = subStringWithIndex[i][0]
+            }
+            console.log(subStringWithIndex, suffixOrder)
+
+            yield("p")
+
+
+
+            world.remove(suffixStringTable)
+
+            // Arrays.sort(sa, new Comparator<Integer>() {
+            //     @Override
+            //     public int compare(Integer i, Integer j) {
+            //         return compareNode(i, j, k);
+            //     }
+            // });
+            // tmp[sa[0]] = 0;
+            // for (int i = 1 ; i <= n ; i++) {
+            //     tmp[sa[i]] = tmp[sa[i-1]] + ((compareNode(sa[i-1], sa[i], k) < 0) ? 1 : 0);
+            // }
+            // for (int i = 0 ; i <= n ; i++) {
+            //     rank[i] = tmp[i];
+            // }
+        }
+
+
+        world.rect(32 + 48 * nl + 96, 32, 48, 48, { text: 'おわり', shapeStyle: noedge })
+
+        yield(["finished"])
+      }
+
+      function prepare() {
+        window.world.clear()
+        window.current = doit(world, document.getElementById('query').value)
+      }
+
+      function step() {
+        window.current.next()
+      }
+
+      function clean() {
+        window.world.clear()
+      }
+
+      window.world = Aldrawer.make('#app', { width: 1280, height: 960 })
+    </script>
+
+
+  </body>
+</html>
