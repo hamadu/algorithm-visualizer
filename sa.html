@@ -6,7 +6,7 @@
   </head>
   <body>
     <div>
-      Builds Suffix Array: O(NlogN)<br/>
+      Builds Suffix Array: O(N(logN)^2)<br/>
       <input type="text" id="query" placeholder="query" value="ababdababad" /><br/>
       <button type="button" onClick="prepare()" />init</button>
       <button type="button" onClick="step()" />step</button>
@@ -65,39 +65,69 @@
     <script>
       const size = 48
 
+
+      function buildSuffixStringTable(query, suffixOrder) {
+          const nl = query.length;
+          const suffixStrings = []
+          for (var i = 0 ; i < nl ; i++) {
+            const suffix = query.substr(suffixOrder[i])
+            suffixStrings.push(Array.from(suffix))
+          }
+          return suffixStrings
+      }
+
       function* doit(world, query) {
-        const noedge = { fill: '#fff', stroke: '#fff', 'stroke-width': 0 }
+        const noedge = { fill: '#fff', stroke: '#fff', 'stroke-width': 0, 'fill-opacity': 0 }
         const white =  { fill: '#fff', stroke: '#000', 'stroke-width': 2 }
         const red =    { fill: '#fcc', stroke: '#000', 'stroke-width': 2 }
         const blue =   { fill: '#ccf', stroke: '#000', 'stroke-width': 2 }
 
         const string = world.array(32, 32, 48, 48, Array.from(query))
 
-        const queryArray = world.array(32, 128, size, size, Array.from(query), { orientation: 'row' })
-        const nl = query.length
-
         const suffixOrder = []
-        for (let i = 0 ; i < nl ; i++) {
+        for (let i = 0 ; i < query.length ; i++) {
           suffixOrder.push(i)
         }
-        const suffixArray = world.array(96, 128, size, size, suffixOrder, { orientation: 'row' })
+
+        const queryArray = world.array(32, 180, size, size, Array.from(query), { orientation: 'row' })
+        const nl = query.length
+
+        const suffixArray = world.array(96, 180, size, size, suffixOrder, { orientation: 'row' })
 
 
         yield("prepared")
 
         for (let k = 1 ;  ; k *= 2) {
             // re-order suffix
+            const kText = world.rect(32, 128, 128, 48, { text: 'k =' + k, shapeStyle: noedge })
+
+            const suffixRank = []
+            for (var i = 0 ; i < suffixOrder.length ; i++) {
+              suffixRank[suffixOrder[i]] = i
+            }
+            const rank = world.array(32, 80, 48, 48, suffixRank)
 
             for (var i = 0 ; i < nl ; i++) {
               suffixArray.setValue(i, suffixOrder[i])
             }
 
-            const suffixStrings = []
-            for (var i = 0 ; i < nl ; i++) {
-              const suffix = query.substr(suffixOrder[i])
-              suffixStrings.push(Array.from(suffix))
+            {
+              const suffixStrings = buildSuffixStringTable(query, suffixOrder)
+              const suffixStringTable = world.table(160, 180, size, size, suffixStrings)
+              for (var i = 0 ; i < nl ; i++) {
+                for (var j = 0 ; j < k ; j++) {
+                  if (j < suffixStrings[i].length) {
+                    if (j < k / 2) {
+                      suffixStringTable.setStyle(i, j, 'fill', '#ccf')
+                    } else {
+                      suffixStringTable.setStyle(i, j, 'fill', '#fcc')
+                    }
+                  }
+                }
+              }
+              yield("p")
+              world.remove(suffixStringTable)
             }
-            const suffixStringTable = world.table(160, 128, size, size, suffixStrings)
 
             if (k > nl) {
               break;
@@ -119,29 +149,29 @@
             for (var i = 0 ; i < nl ; i++) {
               suffixOrder[i] = subStringWithIndex[i][0]
             }
-            console.log(subStringWithIndex, suffixOrder)
 
-            yield("p")
+            {
+              const suffixStrings = buildSuffixStringTable(query, suffixOrder)
+              const suffixStringTable = world.table(160, 180, size, size, suffixStrings)
+              for (var i = 0 ; i < nl ; i++) {
+                for (var j = 0 ; j < k ; j++) {
+                  if (j < suffixStrings[i].length) {
+                    suffixStringTable.setStyle(i, j, 'fill', '#ccf')
+                  }
+                }
+              }
 
+              yield("p")
 
+              world.remove(suffixStringTable)
+            }
 
-            world.remove(suffixStringTable)
-
-            // Arrays.sort(sa, new Comparator<Integer>() {
-            //     @Override
-            //     public int compare(Integer i, Integer j) {
-            //         return compareNode(i, j, k);
-            //     }
-            // });
-            // tmp[sa[0]] = 0;
-            // for (int i = 1 ; i <= n ; i++) {
-            //     tmp[sa[i]] = tmp[sa[i-1]] + ((compareNode(sa[i-1], sa[i], k) < 0) ? 1 : 0);
-            // }
-            // for (int i = 0 ; i <= n ; i++) {
-            //     rank[i] = tmp[i];
-            // }
+            world.remove(rank)
+            world.remove(kText)
         }
 
+        const suffixStrings = buildSuffixStringTable(query, suffixOrder)
+        const suffixStringTable = world.table(160, 180, size, size, suffixStrings)
 
         world.rect(32 + 48 * nl + 96, 32, 48, 48, { text: 'おわり', shapeStyle: noedge })
 
