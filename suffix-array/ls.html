@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>aldrawer demo</title>
+  </head>
+  <body>
+    <div>
+      Determines Suffix Types: O(N)<br/>
+      <input type="text" id="query" placeholder="query" value="ababdababad" /><br/>
+      <button type="button" onClick="prepare()" />init</button>
+      <button type="button" onClick="step()" />step</button>
+      <button type="button" onClick="clean()" />clear</button>
+    </div>
+
+    <div>
+      <pre>
+        ※ Type-S: S(i) < S(i+1), or i = n-1
+        ※ Type-L: S(i) > S(i+1)
+      </pre>
+    </div>
+
+    <div id="app"></div>
+
+    <script src="../node_modules/aldrawer/dist/build.js"></script>
+
+    <script>
+      function* doit(world, query) {
+        const noedge = { fill: '#fff', stroke: '#fff', 'stroke-width': 0 }
+        const white =  { fill: '#fff', stroke: '#000', 'stroke-width': 2 }
+        const red =    { fill: '#fcc', stroke: '#000', 'stroke-width': 2 }
+        const blue =   { fill: '#ccf', stroke: '#000', 'stroke-width': 2 }
+
+
+        const queryArray = world.addColumn(32, 96, 48, 48, Array.from(query), { index: true })
+        const n = query.length
+        const suffixTypes = []
+        for (let i = 0 ; i < n ; i++) {
+          suffixTypes.push('?')
+        }
+        const typeArray  = world.addColumn(32, 96 + 96, 48, 48, suffixTypes)
+
+        yield("prepared")
+
+        for (let i = n-1 ; i >= 0 ; i--) {
+          queryArray.setShapeStyles(white)
+          typeArray.setShapeStyles(white)
+          typeArray.setShapeStyle(i, 'fill', '#ffa')
+
+          yield("i = " + i)
+
+          if (i == n-1) {
+            typeArray.set(i, 'S')
+          } else {
+            const now  = query.charAt(i)
+            const next = query.charAt(i+1)
+
+            queryArray.setShapeStyle(i, 'fill', '#aaf')
+            queryArray.setShapeStyle(i+1, 'fill', '#faa')
+
+            if (now != next) {
+              if (now < next) {
+                typeArray.set(i, 'S')
+              } else {
+                typeArray.set(i, 'L')
+              }
+            } else {
+              typeArray.set(i, typeArray.get(i+1))
+            }
+          }
+          yield("i = " + i)
+        }
+
+        queryArray.setShapeStyles(white)
+        typeArray.setShapeStyles(white)
+        for (let i = 1 ; i < n ; i++) {
+          if (typeArray.get(i-1) === 'L' && typeArray.get(i) === 'S') {
+            typeArray.setShapeStyle(i, 'fill', '#ffa')
+          }
+        }
+
+        yield("LMS")
+
+        const finished = world.addRect(32, 96 * 3, 48, 48, 'おわり')
+        finished.setShapeStyle('stroke-width', '0px')
+
+        yield(["finished"])
+      }
+
+      function prepare() {
+        window.world.clear()
+        window.current = doit(world, document.getElementById('query').value + '$')
+      }
+
+      function step() {
+        window.current.next()
+      }
+
+      function clean() {
+        window.world.clear()
+      }
+
+      window.world = Aldrawer.make('#app', { width: 1280, height: 960 })
+    </script>
+
+
+  </body>
+</html>

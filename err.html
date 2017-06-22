@@ -47,35 +47,40 @@
         const red =    { fill: '#fcc', stroke: '#000', 'stroke-width': 2 }
         const blue =   { fill: '#ccf', stroke: '#000', 'stroke-width': 2 }
 
-        const queryArray = world.array(32, 96, 48, 48, Array.from(query), { index: true })
+
+        const queryArray = world.addColumn(32, 96, 48, 48, Array.from(query), { index: true })
         const nl = query.length
         const backData = [-1, 0]
         for (let i = 2 ; i <= nl ; i++) {
           backData.push('?')
         }
-        const backArray    =   world.array(32, 96 + 96, 48, 48, backData)
+        const backArray  = world.addColumn(32, 96 + 96, 48, 48, backData)
 
         yield("prepared")
 
         for (let i = 2 ; i <= nl ; i++) {
           let now = backData[i-1]
 
-          queryArray.setStyles(white)
-          backArray.setStyles(white)
-          backArray.setStyle(i-1, 'fill', '#aaf')
-          backArray.setStyle(i, 'fill', '#ffa')
+          queryArray.setShapeStyles(white)
+          backArray.setShapeStyles(white)
+          backArray.setShapeStyle(i-1, 'fill', '#aaf')
+          backArray.setShapeStyle(i, 'fill', '#ffa')
 
           while (now > 0) {
-            queryArray.setStyles(white)
+            queryArray.setShapeStyles(white)
 
             // show same range
-            const w1 = world.rect(32, 48, 48 * now, 16, { shapeStyle: red })
-            const w2 = world.rect(32 + (i - 2 - now + 1) * 48, 16, 48 * now, 16, { shapeStyle: red })
+            const w1 = world.addRect(32, 48, 48 * now, 16)
+            w1.setShapeStyles(red)
+
+            const w2 = world.addRect(32 + (i - 2 - now + 1) * 48, 16, 48 * now, 16)
+            w2.setShapeStyles(red)
+
             yield("w12")
 
             if (query[i-1] == query[now]) {
-              queryArray.setStyle(i-1, 'fill', '#faa')
-              queryArray.setStyle(now, 'fill', '#faa')
+              queryArray.setShapeStyle(i-1, 'fill', '#faa')
+              queryArray.setShapeStyle(now, 'fill', '#faa')
               yield("ok")
               world.remove(w1)
               world.remove(w2)
@@ -83,16 +88,16 @@
             }
 
 
-            queryArray.setStyle(i-1, 'fill', '#aaf')
-            queryArray.setStyle(now, 'fill', '#faa')
+            queryArray.setShapeStyle(i-1, 'fill', '#aaf')
+            queryArray.setShapeStyle(now, 'fill', '#faa')
             yield("ng")
 
             const nnow = now
             now = backData[now]
 
-            backArray.setStyles(white)
-            backArray.setStyle(nnow, 'fill', '#aaf')
-            backArray.setStyle(i, 'fill', '#ffa')
+            backArray.setShapeStyles(white)
+            backArray.setShapeStyle(nnow, 'fill', '#aaf')
+            backArray.setShapeStyle(i, 'fill', '#ffa')
 
 
             world.remove(w1)
@@ -104,28 +109,29 @@
 
           if (query[i-1] == query[now]) {
             for (let c = 0 ; c < nl ; c++) {
-              queryArray.setStyle(c, 'fill', '#fff')
+              queryArray.setShapeStyle(c, 'fill', '#fff')
             }
-            queryArray.setStyle(i-1, 'fill', '#faa')
-            queryArray.setStyle(now, 'fill', '#faa')
+            queryArray.setShapeStyle(i-1, 'fill', '#faa')
+            queryArray.setShapeStyle(now, 'fill', '#faa')
             now++
           } else {
             for (let c = 0 ; c < nl ; c++) {
-              queryArray.setStyle(c, 'fill', '#fff')
+              queryArray.setShapeStyle(c, 'fill', '#fff')
             }
-            queryArray.setStyle(i-1, 'fill', '#aaf')
-            queryArray.setStyle(now, 'fill', '#faa')
+            queryArray.setShapeStyle(i-1, 'fill', '#aaf')
+            queryArray.setShapeStyle(now, 'fill', '#faa')
             now = 0
           }
 
           backData[i] = now
-          backArray.setValue(i, now)
-          backArray.setStyle(i, 'fill', '#fcc')
+          backArray.set(i, now)
+          backArray.setShapeStyle(i, 'fill', '#fcc')
 
           yield("i = " + i)
         }
 
-        world.rect(32, 96 * 3, 48, 48, { text: 'おわり', shapeStyle: noedge })
+        const finished = world.addRect(32, 96 * 3, 48, 48, 'おわり')
+        finished.setShapeStyle('stroke-width', '0px')
 
         yield(["finished"])
       }

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>aldrawer demo</title>
+  </head>
+  <body>
+    <div>
+      Induced Sort: O(N)<br/>
+      <input type="text" id="query" placeholder="query" value="ababdababad" /><br/>
+      <button type="button" onClick="prepare()" />init</button>
+      <button type="button" onClick="step()" />step</button>
+      <button type="button" onClick="clean()" />clear</button>
+    </div>
+
+    <div>
+      <pre>
+        ※ Type-S: S(i) < S(i+1), or i = n-1
+        ※ Type-L: S(i) > S(i+1)
+      </pre>
+    </div>
+
+    <div id="app"></div>
+
+    <script src="../node_modules/aldrawer/dist/build.js"></script>
+
+    <script>
+      function buildSuffixStringTable(query, suffixOrder) {
+        const nl = query.length;
+        const suffixStrings = []
+        for (var i = 0 ; i < nl ; i++) {
+          if (suffixOrder[i] === -1) {
+            suffixStrings.push([])
+          } else {
+            const suffix = query.substr(suffixOrder[i])
+            suffixStrings.push(Array.from(suffix))
+          }
+        }
+        return suffixStrings
+      }
+
+      function ls(query) {
+        const n = query.length;
+        const lo = Array(n)
+        lo[n-1] = 'S'
+        for (let i = n-2 ; i >= 0 ; i--) {
+          const now  = query.charAt(i)
+          const next = query.charAt(i+1)
+          if (now != next) {
+            if (now < next) {
+              lo[i] = 'S'
+            } else {
+              lo[i] = 'L'
+            }
+          } else {
+            lo[i] = lo[i+1]
+          }
+        }
+
+        for (let i = 1 ; i < n ; i++) {
+          if (lo[i-1] === 'L' && lo[i] === 'S') {
+            lo[i] = '*S'
+          }
+        }
+
+        return lo
+      }
+
+      function computeBuckets(query) {
+        const bucketSizeMap = {}
+        for (let i = 0 ; i < query.length ; i++) {
+          const c = query.charAt(i)
+          bucketSizeMap[c] = bucketSizeMap[c] || 0
+          bucketSizeMap[c] += 1
+        }
+        return Object.keys(bucketSizeMap).sort((u, v) => u.localeCompare(v)).map(key => [key, bucketSizeMap[key]])
+      }
+
+      function computeBucketRange(buckets) {
+        const range = {}
+        let from = 0
+        buckets.forEach(b => {
+          range[b[0]] = [from, from + b[1]]
+          from += b[1]
+        })
+        return range
+      }
+
+      function fillSuffixes() {
+
+      }
+
+      function* doit(world, query) {
+        const colors = ['#faa', '#afa', '#aaf', '#ffa', '#faf', '#aff']
+
+        const noedge = { fill: '#fff', stroke: '#fff', 'stroke-width': 0, 'fill-opacity': 0 }
+        const white =  { fill: '#fff', stroke: '#000', 'stroke-width': 2 }
+        const red =    { fill: '#fcc', stroke: '#000', 'stroke-width': 2 }
+        const blue =   { fill: '#ccf', stroke: '#000', 'stroke-width': 2 }
+
+        const queryString = world.addColumn(32, 32, 48, 48, Array.from(query))
+        const lms = world.addColumn(32, 80, 48, 48, ls(query))
+
+        const suffixOrder = []
+        for (let i = 0 ; i < query.length ; i++) {
+          suffixOrder.push(-1)
+        }
+        const suffixArray = world.addRow(32, 180, 48, 48, suffixOrder)
+
+        yield("prepared")
+
+        const firstChars = []
+        const buckets = computeBuckets(query).forEach((b, idx) => {
+          for (let i = 0 ; i < b[1] ; i++) {
+            firstChars.push(b[0])
+          }
+        })
+
+        const bucketArray = world.addRow(80, 180, 48, 48, firstChars)
+        {
+          let colorIdx = -1
+          for (let i = 0 ; i < query.length ; i++) {
+            if (i == 0 || firstChars[i-1] != firstChars[i]) {
+              colorIdx++;
+            }
+            bucketArray.setShapeStyle(i, 'fill', colors[colorIdx % colors.length])
+          }
+        }
+
+        yield(["bucket"])
+
+        {
+          const bucketRange = computeBucketRange(computeBuckets(query))
+          const lmsSuffixes = []
+          for (var i = 0 ; i < query.length ; i++) {
+            if (lms.get(i) === '*S') {
+              lmsSuffixes.push([i, query.substr(i)])
+            }
+          }
+
+          const suffixes = lmsSuffixes.sort((u, v) => u[1].localeCompare(v[1]))
+          for (let si = suffixes.length-1 ; si >= 0 ; si--) {
+            const firstChar = suffixes[si][1].charAt(0)
+            bucketRange[firstChar][1]--
+
+            suffixOrder[bucketRange[firstChar][1]] = suffixes[si][0]
+
+            const suffixStringTable = world.addTable(160, 180, 48, 48, buildSuffixStringTable(query, suffixOrder))
+
+            suffixArray.set(bucketRange[firstChar][1], suffixes[si][0])
+            queryString.setShapeStyle(suffixes[si][0], 'fill', '#ccc')
+            lms.setShapeStyle(suffixes[si][0], 'fill', '#ccc')
+
+            yield(["lms"])
+
+            world.remove(suffixStringTable)
+          }
+        }
+
+        {
+          const suffixStringTable = world.addTable(160, 180, 48, 48, buildSuffixStringTable(query, suffixOrder))
+          yield(["lms"])
+          world.remove(suffixStringTable)
+        }
+
+        const bucketRange = computeBucketRange(computeBuckets(query))
+        for (let i = 0 ; i < query.length ; i++) {
+          const ord = suffixOrder[i]
+          if (ord != -1 && lms.get(ord-1) === 'L') {
+            suffixArray.setShapeStyle(i, 'fill', '#aaf')
+            queryString.setShapeStyle(ord-1, 'fill', '#faa')
+            lms.setShapeStyle(ord-1, 'fill', '#faa')
+
+            let suffixStringTable = world.addTable(160, 180, 48, 48, buildSuffixStringTable(query, suffixOrder))
+            yield(["L1"])
+            world.remove(suffixStringTable)
+
+            const firstChar = query.substr(ord-1).charAt(0)
+            suffixOrder[bucketRange[firstChar][0]] = ord-1
+
+            suffixStringTable = world.addTable(160, 180, 48, 48, buildSuffixStringTable(query, suffixOrder))
+
+            suffixArray.set(bucketRange[firstChar][0], ord-1)
+            suffixArray.setShapeStyle(i, 'fill', '#fff')
+            queryString.setShapeStyle(ord-1, 'fill', '#999')
+            lms.setShapeStyle(ord-1, 'fill', '#999')
+
+
+            bucketRange[firstChar][0] += 1
+
+            yield(["L2"])
+
+            world.remove(suffixStringTable)
+          }
+        }
+
+        {
+          for (var i = 0 ; i < query.length ; i++) {
+            if (lms.get(i) === '*S') {
+              queryString.setShapeStyle(i, 'fill', '#fff')
+              lms.setShapeStyle(i, 'fill', '#fff')
+            }
+          }
+          for (var i = 0 ; i < query.length ; i++) {
+            if (suffixOrder[i] != -1 && lms.get(suffixOrder[i]) === '*S') {
+              suffixOrder[i] = -1;
+            }
+          }
+          const suffixStringTable = world.addTable(160, 180, 48, 48, buildSuffixStringTable(query, suffixOrder))
+          yield(["lms"])
+          world.remove(suffixStringTable)
+        }
+
+        for (var i = query.length-1 ; i >= 0 ; i--) {
+          const ord = suffixOrder[i]
+          if (ord != -1 && (lms.get(ord-1) === 'S' || lms.get(ord-1) === '*S')) {
+            suffixArray.setShapeStyle(i, 'fill', '#aaf')
+            queryString.setShapeStyle(ord-1, 'fill', '#faa')
+            lms.setShapeStyle(ord-1, 'fill', '#faa')
+
+            let suffixStringTable = world.addTable(160, 180, 48, 48, buildSuffixStringTable(query, suffixOrder))
+            yield(["S1"])
+            world.remove(suffixStringTable)
+
+            const firstChar = query.substr(ord-1).charAt(0)
+            bucketRange[firstChar][1] -= 1
+
+            suffixOrder[bucketRange[firstChar][1]] = ord-1
+            suffixStringTable = world.addTable(160, 180, 48, 48, buildSuffixStringTable(query, suffixOrder))
+
+            suffixArray.set(bucketRange[firstChar][1], ord-1)
+            suffixArray.setShapeStyle(i, 'fill', '#fff')
+            queryString.setShapeStyle(ord-1, 'fill', '#999')
+            lms.setShapeStyle(ord-1, 'fill', '#999')
+
+            yield(["S2"])
+
+            world.remove(suffixStringTable)
+          }
+        }
+
+        const suffixStringTable = world.addTable(160, 180, 48, 48, buildSuffixStringTable(query, suffixOrder))
+        const finished = world.addRect(32 + 48 * query.length + 96, 32, 48, 48, 'おわり')
+        finished.setShapeStyle('stroke-width', '0px')
+
+        yield(["finished"])
+      }
+
+      function prepare() {
+        window.world.clear()
+        window.current = doit(world, document.getElementById('query').value + '$')
+      }
+
+      function step() {
+        window.current.next()
+      }
+
+      function clean() {
+        window.world.clear()
+      }
+
+      window.world = Aldrawer.make('#app', { width: 1280, height: 960 })
+    </script>
+
+
+  </body>
+</html>
